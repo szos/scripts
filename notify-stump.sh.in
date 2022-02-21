@@ -1,0 +1,177 @@
+alert=""
+echoer=""
+echoer_set=0
+supress_stdin=0
+text=""
+text_passed=0
+text_read=0
+fg=""
+bg=""
+fg_t=""
+bg_t=""
+prefix=""
+suffix=""
+color="2"
+
+hold=""
+
+read_from_stdin() {
+    if [ ! -t 0 ] && [ -p /dev/stdin ]; then
+        hold=$(cat /dev/stdin)
+    else
+        echo_stderr "Nothing read from stdin"
+        hold=""
+    fi
+}
+
+notify() {
+    # if the lockfile exists, return failure
+    if [ -f "/tmp/.stumpwm.d.notification.txt.lock" ]; then
+        return 1
+    else
+        # otherwise, create the lockfile, echo the notification into the
+        # notification file, remove the lockfile, and return success.
+        touch "/tmp/.stumpwm.d.notification.txt.lock"
+        echo "${alert}${fg}${bg}${prefix}^[${fg_t}${bg_t}${echoer}^]${suffix}" \
+             > "/tmp/.stumpwm.d.notification.txt"
+        rm "/tmp/.stumpwm.d.notification.txt.lock"
+        return 0
+    fi
+}
+
+echohelp() {
+    name=$(echo "$0" | sed 's,.*/,,')
+    echo "Usage: $name [OPTIONS] ... [TEXT] ..."
+    echo "Notify the user via StumpWM
+
+If TEXT, PREFIX, or SUFFIX are «-» they are read from stdin. Only one may be
+read from stdin.
+
+  -h          Display this help message
+  -t TEXT     Display TEXT. If TEXT is «-» then TEXT is read from stdin. If -t 
+              is not provided TEXT is assumed to begin at the first non-option
+              argument. If there are no non-option arguments or the first 
+              non-option argument is «-» TEXT is read from stdin. 
+  -l          Display text literally, ie dont read from stdin when encountering
+              «-»
+  -W          Prepend TEXT with «Warning» in orange
+  -A          Prepend TEXT with «ALERT» in red
+  -f COLOR    Display TEXT with foreground color COLOR. COLOR may be a three or 
+              six character hexadecimal string. 
+  -b COLOR    Display TEXT with background color COLOR. COLOR may be a three or 
+              six character hexadecimal string.
+  -F COLOR    Display prefix, TEXT, and suffix with foreground color COLOR. 
+  -B COLOR    Display prefix, TEXT, and suffix with background color COLOR. 
+  -c          Display TEXT without colors.
+  -C          Display TEXT with colors.
+  -p STRING   Prefix TEXT with STRING. If -W or -A are given, this will be
+              placed between the warning or alert text and TEXT. If STRING is
+              «-» it is read from stdin
+  -s STRING   Suffix TEXT with STRING. If -W or -A are given, this will be
+              placed between the warning or alert text and TEXT. If STRING is
+              «-» it is read from stdin
+
+TEXT can include StumpWM color commands, prefixed by ^, such as ^R to reverse
+the colors. Use ^^ to insert a regular carrot.
+
+NB: The following examples are equivalent - both read from stdin
+  echo Hello | $name 
+  echo Hello | $name -
+  echo Hello | $name -t -
+
+Examples:
+  $name -W this is a warning
+  $name -A Program X said ^\\(:fg \"red\"\\)EMERGENCY 
+  $name -t \"hi \" -s \"there\"
+  echo here is a notification | $name -
+  whoami | $name -f0f0 -p\"Hello, ^R\" -s\"^r, welcome to Stump.\" -
+  whoami | $name -F0f0 -ff00 -p\"Hello, \" -t - -s\", welcome\"
+  whoami | $name -f 00ff00 -B 555 -p \"Hello, \" -
+  whoami | $name -p \"Hello, \" -t - -s \", welcome to Stump\"
+  whoami | $name -p \"Hello, \" -s \", welcome to Stump\""
+}
+
+## read from standard input, otherwise echo all "arguments" into the
+## notification file.
+
+while getopts "hlt:WAcCf:b:F:B:p:s:" opt;
+do
+    case "$opt" in
+        h) echohelp
+           exit 0
+           ;;
+        l) supress_stdin=1
+           ;;
+        t) text="$OPTARG"
+           text_passed=1
+           ;;
+        W) alert="^[^(:fg \"#ff8000\")Warning:^] "
+           ;;
+        A) alert="^[^(:fg \"#ff0000\")ALERT:^] "
+           ;;
+        c) notify_cmd="0"
+           ;;
+        C) notify_cmd="1"
+           ;;
+        f) fg_t="^(:fg \"#$OPTARG\")"
+           ;;
+        b) bg_t="^(:bg \"#$OPTARG\")"
+           ;;
+        F) fg="^(:fg \"#$OPTARG\")"
+           ;;
+        B) bg="^(:bg \"#$OPTARG\")"
+           ;;
+        p) prefix="$OPTARG"
+           ;;
+        s) suffix="$OPTARG"
+           ;;
+        \?) echo_stderr "Unknown option passed, exiting"
+            exit 1
+            ;;
+    esac
+done
+
+## shift past all the processed options
+shift $(($OPTIND - 1))
+
+remaining="$*"
+
+## read all remaining things as a notification, or read from stdin.
+
+if [ "$text_passed" -eq 0 ]; then
+    # if text wasnt passed set text to whatever is remaining.
+    text="$remaining"
+fi
+
+if [ "$supress_stdin" -eq 0 ]; then
+    # if were not suppressing stdin, then read from it and set whatever is - to
+    # it.
+    read_from_stdin
+    if [ "$prefix" = "-" ]; then
+        prefix="$hold"
+    fi
+    if [ "$text" = "-" ]; then
+        text="$hold"
+    else
+        if [ "$text" = "" ] && [ "$text_passed" -eq 0 ]; then
+            text="$hold"
+        fi
+    fi
+    if [ "$suffix" = "-" ]; then
+        suffix="$hold"
+    fi
+fi
+
+echoer="$text"
+
+# Try to notify
+notify
+# while notify fails, sleep and try again. 
+while [ "$?" -eq 1 ]; do
+    sleep 0.1
+    notify
+done
+
+# run the stump command to read this notification.
+xprop -root -f STUMPWM_COMMAND 8s -set STUMPWM_COMMAND "read-notification $color"
+

@@ -1,0 +1,24 @@
+get_temp() {
+    # sensors | grep Core | awk ' {print $3} ' | \
+    #     sed 's/.*+//' | sed 's/\..*//' | head -n 1
+    paste <(cat /sys/class/thermal/thermal_zone*/type) \
+          <(cat /sys/class/thermal/thermal_zone*/temp) | \
+        column -s $'\t' -t | \
+        sed 's/\(.\)..$/.\1°C/' | \
+        grep x86 | sed 's/.* //' | sed 's/\..*//'
+}
+
+stop="N"
+
+while [ "$stop" == "N" ]
+do
+    temperature=$(get_temp)
+    if [ "$temperature" -gt 90 ]; then
+        echo "CPU temp is $temperature" | notify_swm -A
+    else 
+        if [ "$temperature" -gt 80 ]; then
+            echo "CPU temp is $temperature" | notify_swm -W
+        fi
+    fi
+    sleep 30
+done 

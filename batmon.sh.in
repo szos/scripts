@@ -1,0 +1,24 @@
+stop="N"
+
+ret="60"
+
+while [ "$stop" = "N" ]
+do
+    kapasitet=$(cat /sys/class/power_supply/BAT0/capacity)
+    status=$(cat /sys/class/power_supply/BAT0/status)
+    if [ "$status" = "Discharging" ]; then
+	if [ "$kapasitet" -le 20 ]; then
+            echo_stderr "Battery is at $kapasitet%" 
+            # echo "Battery is at $kapasitet%" | notify-swm -A
+            notify_swm -A -f ff0000 -p "Battery is at " -s "%" "$kapasitet" 
+	    sleep "$ret"
+        else
+            if [ "$kapasitet" -le 30 ]; then
+                echo_stderr "Battery is at $kapasitet%"
+                notify_swm -W -f ff8000 -p "Battery is at " -s "%" "$kapasitet" 
+                sleep "$ret"
+            fi
+	fi 
+    fi
+    sleep 60
+done
