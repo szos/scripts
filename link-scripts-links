@@ -1,0 +1,4 @@
+notify-stump.sh notify-swm
+batmon.sh monitor-battery
+make-pdf-from-tex-with-bibtex.sh make-tex-pdf
+cpu-temp.sh monitor-cpu-temp
