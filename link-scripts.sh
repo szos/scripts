@@ -5,7 +5,9 @@ curdir="$(pwd)/"
 
 scripts="notify-stump.sh notify-swm
 batmon.sh monitor-battery
+cpu-temp.sh monitor-cpu-temp
 make-pdf-from-tex-with-bibtex.sh make-tex-pdf"
+
 
 if [ -d "${bindir}" ]; then
     echo "bin exists"
