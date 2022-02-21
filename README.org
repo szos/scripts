@@ -1,0 +1,17 @@
+#+TITLE: General Scripts
+
+* Usage
+  run the following to create and link the scripts
+
+  #+begin_src sh
+    ./make-scripts.sh
+    ./link-scripts.sh
+  #+end_src
+
+  To add scripts as functions, such that they are accessible by other scripts in
+  this directory regardless of whether they are in the path or not, use
+  ~add-script-to-include.sh~.
+
+  #+begin_src sh
+    ./add-script-to-include.sh -s script-name.sh -f function_name -l link-name
+  #+end_src

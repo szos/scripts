@@ -3,10 +3,7 @@
 bindir="$(dirname ~/bin)/bin/"
 curdir="$(pwd)/"
 
-scripts="notify-stump.sh notify-swm
-batmon.sh monitor-battery
-cpu-temp.sh monitor-cpu-temp
-make-pdf-from-tex-with-bibtex.sh make-tex-pdf"
+scripts="$(cat link-scripts-links)"
 
 
 if [ -d "${bindir}" ]; then
